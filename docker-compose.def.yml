@@ -12,19 +12,24 @@ services:
       - letsencrypt:/etc/letsencrypt:ro
 
   certbot:
-    image: certbot/certbot:v4.0.0
+    build:
+      context: ./certbot
+    image: local-certbot:v4.0.0-docker-cli
     container_name: certbot
+    restart: unless-stopped
+    depends_on:
+      - nginx
+    pid: "service:nginx"
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_www:/var/www/certbot
-      - ./certbot/init-cert.sh:/init-cert.sh:ro
     entrypoint: /bin/sh
     command: >
       -c "trap exit TERM;
-          while :; do
-            certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
-            sleep 12h & wait $${!};
-          done"
+            while :; do
+              certbot renew --webroot --webroot-path=/var/www/certbot --quiet --deploy-hook 'kill -HUP 1';
+              sleep 12h & wait $${!};
+            done"
 
 volumes:
   letsencrypt:
